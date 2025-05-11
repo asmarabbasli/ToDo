@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vərdiş İzləyici + GPS</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #e9f0f6;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      max-width: 500px;
+      width: 100%;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 0.8rem;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 20px;
+    }
+
+    li {
+      background: #f9f9f9;
+      margin-bottom: 10px;
+      padding: 1rem;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .completed {
+      text-decoration: line-through;
+      color: gray;
+    }
+
+    #locationStatus {
+      margin-top: 10px;
+      color: #16a085;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Vərdişlərin İzlənməsi</h2>
+    <input type="text" id="habitInput" placeholder="Yeni vərdiş daxil edin...">
+    <button onclick="addHabit()">Əlavə et</button>
+    <button onclick="checkLocation()">📍 GPS ilə Yoxla</button>
+    <p id="locationStatus"></p>
+    <ul id="habitList"></ul>
+  </div>
+
+  <script>
+    const habitList = document.getElementById("habitList");
+
+    function addHabit() {
+      const input = document.getElementById("habitInput");
+      const value = input.value.trim();
+      if (value === "") return;
+
+      const li = document.createElement("li");
+      const span = document.createElement("span");
+      span.textContent = value;
+      li.appendChild(span);
+
+      const btn = document.createElement("button");
+      btn.textContent = "✔️";
+      btn.style.marginLeft = "10px";
+      btn.onclick = () => {
+        span.classList.toggle("completed");
+      };
+
+      li.appendChild(btn);
+      habitList.appendChild(li);
+      input.value = "";
+    }
+
+    // Xəbərdarlıq sistemi
+    function setDailyReminder() {
+      if (Notification.permission === "granted") {
+        const now = new Date();
+        const target = new Date();
+        target.setHours(9, 0, 0, 0);
+        if (now > target) target.setDate(target.getDate() + 1);
+        const timeout = target - now;
+
+        setTimeout(() => {
+          new Notification("Bugünkü vərdişlərini yerinə yetirmisənmi? 💪");
+          setDailyReminder();
+        }, timeout);
+      }
+    }
+
+    if ('Notification' in window && Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          setDailyReminder();
+        }
+      });
+    }
+
+    // GPS koordinatı yoxlama
+    const gymLocation = {
+      latitude: 40.4093,  // Bura öz zalının koordinatlarını yaz
+      longitude: 49.8671
+    };
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // meters
+      const φ1 = lat1 * Math.PI/180;
+      const φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2-lat1) * Math.PI/180;
+      const Δλ = (lon2-lon1) * Math.PI/180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      const d = R * c;
+      return d;
+    }
+
+    function checkLocation() {
+      const status = document.getElementById("locationStatus");
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+          const distance = getDistance(
+            position.coords.latitude,
+            position.coords.longitude,
+            gymLocation.latitude,
+            gymLocation.longitude
+          );
+
+          if (distance < 100) {
+            status.textContent = "🎉 Zaldayan! Vərdiş uğurla tamamlandı!";
+          } else {
+            status.textContent = `📍 Zala ${Math.round(distance)} m məsafədəsən. Yaxınlaşmalısan.`;
+          }
+        }, () => {
+          status.textContent = "❌ GPS məlumatı əldə edilə bilmədi.";
+        });
+      } else {
+        status.textContent = "Brauzer GPS-i dəstəkləmir.";
+      }
+    }
+  </script>
+</body>
+</html>
